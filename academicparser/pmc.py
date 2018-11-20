@@ -9,53 +9,8 @@ from academicparser.model import Paper, PaperType, ReferenceString
 REQUEST_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36'
 PMC_PAPER_URL_FORMAT = 'https://www.ncbi.nlm.nih.gov/pmc/articles/{}/'
 
-class PMCHtmlParser(HTMLParser):
-    PARSER_STATE_IDLE = 0
-    PARSER_STATE_TITLE = 1
-    PARSER_STATE_AUTHOR_LIST = 2
-    PARSER_STATE_AUTHOR_ELEMENT = 3
-    PARSER_STATE_ABSTRACT = 4
-
-    def __init__(self, paper):
-        super().__init__()
-        self.paper = paper
-
-        self.parser_state = PMCHtmlParser.PARSER_STATE_IDLE
-
-    def handle_starttag(self, tag, attrs):
-        attr_dict = {e[0]: e[1] for e in attrs}
-
-        if self.parser_state == PMCHtmlParser.PARSER_STATE_IDLE:
-            if tag == 'h1':
-                if 'class' in attr_dict and attr_dict['class'] == 'content-title':
-                    self.parser_state = PMCHtmlParser.PARSER_STATE_TITLE
-            elif tag == 'div':
-                if 'class' in attr_dict and attr_dict['class'] == 'contrib-group fm-author':
-                    self.parser_state = PMCHtmlParser.PARSER_STATE_AUTHOR_LIST
-        elif self.parser_state == PMCHtmlParser.PARSER_STATE_AUTHOR_LIST:
-            if tag == 'a':
-                self.parser_state = PMCHtmlParser.PARSER_STATE_AUTHOR_ELEMENT
-
-    def handle_data(self, data):
-        if self.parser_state == PMCHtmlParser.PARSER_STATE_TITLE:
-            self.paper.title = data
-        elif self.parser_state == PMCHtmlParser.PARSER_STATE_AUTHOR_ELEMENT:
-            self.paper.authors.append(data)
-
-    def handle_endtag(self, tag):
-        if self.parser_state == PMCHtmlParser.PARSER_STATE_TITLE:
-            if tag == 'h1':
-                self.parser_state = PMCHtmlParser.PARSER_STATE_IDLE
-        elif self.parser_state == PMCHtmlParser.PARSER_STATE_AUTHOR_LIST:
-            if tag == 'div':
-                self.parser_state = PMCHtmlParser.PARSER_STATE_IDLE
-        elif self.parser_state == PMCHtmlParser.PARSER_STATE_AUTHOR_ELEMENT:
-            if tag == 'a':
-                self.parser_state = PMCHtmlParser.PARSER_STATE_AUTHOR_LIST
-
-
 def parse(pmcid: str) -> Optional[Paper]:
-    paper = Paper(PaperType.PAPER_TYPE_ETC)
+    paper = Paper(PaperType.PAPER_TYPE_PMC)
     paper.pmcid = pmcid
 
     paper_url: str = PMC_PAPER_URL_FORMAT.format(pmcid)
@@ -79,7 +34,9 @@ def parse(pmcid: str) -> Optional[Paper]:
 
             ref_container = soup.find('ul', class_='back-ref-list')
             for e in ref_container.select('li > span'):
-                ref_string = ReferenceString(e.get_text())
+                ref = e.get_text().replace(' [PubMed]', '')
+                ref_string = ReferenceString(ref)
+
                 ref_string.journal = e.find('span', class_='ref-journal').string
                 ref_string.volume = e.find('span', class_='ref-vol').string
                 ref_string.pubmed_path = e.find('a').get('href')
