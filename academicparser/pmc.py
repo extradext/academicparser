@@ -1,3 +1,4 @@
+import dataclasses
 import urllib.request
 import urllib.parse
 from typing import Optional
@@ -60,3 +61,4 @@ def parse(pmcid: str, parse_cite_string: bool = False) -> Optional[Paper]:
             r.parse()
 
     return paper
+
