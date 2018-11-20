@@ -87,6 +87,3 @@ def parse(pmcid: str) -> Optional[Paper]:
                 paper.references.append(ref_string)
 
     return paper
-
-if __name__ == '__main__':
-    parse('PMC1861509')
